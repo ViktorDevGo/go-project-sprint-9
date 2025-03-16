@@ -15,19 +15,16 @@ import (
 // сгенерированных чисел.
 func Generator(ctx context.Context, ch chan<- int64, fn func(int64)) {
 	// 1. Функция Generator
-	var N int64
-	N = 1
-
+	var n int64 = 1
 	for {
 		select {
 		case <-ctx.Done():
 			close(ch)
 			return
 		default:
-			ch <- N
-			fn(N)
-			N++
-			continue
+			ch <- n
+			fn(n)
+			n++
 		}
 	}
 }
@@ -35,17 +32,11 @@ func Generator(ctx context.Context, ch chan<- int64, fn func(int64)) {
 // Worker читает число из канала in и пишет его в канал out.
 func Worker(in <-chan int64, out chan<- int64) {
 	// 2. Функция Worker
-	for {
-		v, ok := <-in
-		if !ok {
-			close(out)
-			break
-		}
-		//fmt.Printf("v= ", v)
+	defer close(out)
+	for v := range in {
 		out <- v
 		time.Sleep(1 * time.Millisecond)
 	}
-
 }
 
 func main() {
@@ -87,8 +78,8 @@ func main() {
 		wg.Add(1)
 		go func(in <-chan int64, q int64) {
 			for a := range in {
-				chOut <- a
 				amounts[q]++
+				chOut <- a
 			}
 			wg.Done()
 		}(outs[i], int64(i))
@@ -106,8 +97,7 @@ func main() {
 	var sum int64   // сумма чисел результирующего канала
 
 	// 5. Читаем числа из результирующего канала
-	count = 0
-	sum = 0
+
 	for v := range chOut {
 		count++
 		sum = sum + v
